@@ -1,20 +1,18 @@
 import { NextResponse } from "next/server";
-
-// IMPORTANT: import PrismaClient from YOUR generated output
 import prisma from "@/lib/prisma";
-
 
 const WINDOW_MS = 3 * 60 * 60 * 1000;
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    const body: unknown = await req.json();
 
-    const username = String(body?.username ?? "").trim();
-    const botIdRaw = String(body?.botId ?? "").trim();
+    const b = body as { username?: unknown; botId?: unknown; houseKey?: unknown };
+
+    const username = String(b?.username ?? "").trim();
+    const botIdRaw = String(b?.botId ?? "").trim();
     const botId = botIdRaw.toLowerCase();
-    const houseKey = body?.houseKey ? String(body.houseKey) : null;
-    
+    const houseKey = b?.houseKey != null ? String(b.houseKey) : null;
 
     if (!username || !botId) {
       return NextResponse.json(
@@ -23,7 +21,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // ✅ bot must exist
+    // bot must exist
     const bot = await prisma.bot.findUnique({
       where: { id: botId },
       select: { id: true },
@@ -36,8 +34,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // ✅ user must exist (allowed user list)
-    // NOTE: username is optional in your schema, so use findFirst to avoid type weirdness.
+    // user must exist (allowed list)
     const user = await prisma.user.findFirst({
       where: { username },
       select: { id: true, username: true },
@@ -54,21 +51,21 @@ export async function POST(req: Request) {
 
     const result = await prisma.$transaction(async (tx) => {
       let state = await tx.botUserState.findUnique({
-        where: { userId: user.id }, // userId is unique in your schema
+        where: { userId: user.id }, // userId is unique
       });
 
       if (!state) {
         state = await tx.botUserState.create({
           data: {
             userId: user.id,
-            botId: botId,
+            botId,
             creditsRemaining: 3,
             windowStartedAt: null,
           },
         });
       }
 
-      // If bot changed, you can either block or update; here we update to the provided botId.
+      // If bot changed, update to provided botId
       if (state.botId !== botId) {
         state = await tx.botUserState.update({
           where: { userId: user.id },
@@ -96,7 +93,7 @@ export async function POST(req: Request) {
 
         return {
           ok: false as const,
-          reason: "MAX_REACHED",
+          reason: "MAX_REACHED" as const,
           creditsRemaining: 0,
           windowStartedAt: state.windowStartedAt,
           resetAt,
@@ -153,7 +150,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       allowed: true,
-      username: user.username,
+      username: user.username ?? username, // ✅ avoid string | null leak
       botId,
       claimId: result.claimId,
       claimNumber: result.claimNumber,
@@ -161,10 +158,14 @@ export async function POST(req: Request) {
       windowStartedAt: result.windowStartedAt,
       resetAt: result.resetAt,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : typeof err === "string" ? err : "Unknown error";
+
     console.error("❌ /api/houses/claim error:", err);
+
     return NextResponse.json(
-      { success: false, error: "Internal Server Error", details: err?.message ?? String(err) },
+      { success: false, error: "Internal Server Error", details: message },
       { status: 500 }
     );
   }

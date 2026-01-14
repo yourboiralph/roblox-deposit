@@ -11,7 +11,7 @@ function toBotId(name: string) {
   return name
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9\s-_]/g, "")
+    .replace(/[^a-z0-9\s_-]/g, "") // ✅ fixed: '-' safe in char class
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-");
 }
@@ -34,10 +34,13 @@ export async function createBotAction(
 
     revalidatePath("/admin/bots");
     return { success: true, bot };
-  } catch (e: any) {
-    if (e?.code === "P2002") {
+  } catch (e: unknown) {
+    const err = e as { code?: string };
+
+    if (err?.code === "P2002") {
       return { success: false, error: "Bot already exists", botId: id };
     }
+
     return { success: false, error: "Failed to create bot" };
   }
 }
