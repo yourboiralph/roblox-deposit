@@ -1,0 +1,77 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// schema.prisma
+
+model User {
+  id        String   @id @default(cuid())
+  email     String?  @unique
+  username  String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  botState BotUserState?
+  houses   HouseClaim[]
+}
+
+model Bot {
+  id        String   @id
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  // optional relation to users via BotUserState
+  users       BotUserState[]
+  houseClaims HouseClaim[]
+}
+
+/**
+ * Per-user state for the bot:
+ * - creditsRemaining: how many houses user can still claim in the current window (0..3)
+ * - windowStartedAt: when the first claim happened in the current 3-hour cycle
+ * Rules:
+ * - If windowStartedAt is null => user hasn't started a cycle yet, they effectively have 3 available.
+ * - Once user claims first house: windowStartedAt is set and creditsRemaining decreases.
+ * - After 3 hours from windowStartedAt: reset creditsRemaining back to 3 and windowStartedAt to null (or set to now on next claim).
+ */
+model BotUserState {
+  id               String    @id @default(cuid())
+  userId           String    @unique
+  botId            String
+  creditsRemaining Int       @default(3)
+  windowStartedAt  DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bot  Bot  @relation(fields: [botId], references: [id], onDelete: Cascade)
+
+  updatedAt DateTime @updatedAt
+
+  @@index([botId])
+}
+
+model HouseClaim {
+  id        String   @id @default(cuid())
+  userId    String
+  botId     String
+  claimedAt DateTime @default(now())
+
+  // optional metadata about the house
+  houseKey String? // e.g. house id/name/type from your game
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bot  Bot  @relation(fields: [botId], references: [id], onDelete: Cascade)
+
+  @@index([userId, claimedAt])
+  @@index([botId, claimedAt])
+}
