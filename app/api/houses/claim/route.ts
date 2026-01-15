@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-const WINDOW_MS = 3 * 60 * 60 * 1000;
+const WINDOW_MS = 3 * 60 * 60 * 1000; // 3 hours
 
 export async function POST(req: Request) {
   try {
     const body: unknown = await req.json();
 
-    const b = body as { username?: unknown; botId?: unknown; houseKey?: unknown };
+    const b = body as {
+      username?: unknown;
+      botId?: unknown;
+      houseKey?: unknown;
+    };
 
     const username = String(b?.username ?? "").trim();
     const botIdRaw = String(b?.botId ?? "").trim();
@@ -21,7 +25,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // bot must exist
+    // ✅ bot must exist
     const bot = await prisma.bot.findUnique({
       where: { id: botId },
       select: { id: true },
@@ -34,7 +38,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // user must exist (allowed list)
+    // ✅ user must exist (allowed list)
     const user = await prisma.user.findFirst({
       where: { username },
       select: { id: true, username: true },
@@ -73,10 +77,10 @@ export async function POST(req: Request) {
         });
       }
 
-      // Reset if expired
+      // ✅ Reset if expired (3 hours after first claim)
       if (state.windowStartedAt) {
         const resetAt = new Date(state.windowStartedAt.getTime() + WINDOW_MS);
-        if (now.getTime() >= resetAt.getTime()) {
+        if (now >= resetAt) {
           state = await tx.botUserState.update({
             where: { userId: user.id },
             data: { creditsRemaining: 3, windowStartedAt: null },
@@ -84,9 +88,19 @@ export async function POST(req: Request) {
         }
       }
 
-      const effectiveCredits = state.windowStartedAt ? state.creditsRemaining : 3;
+      // ✅ Safety heal: if window is null, credits should be 3
+      if (!state.windowStartedAt && state.creditsRemaining !== 3) {
+        state = await tx.botUserState.update({
+          where: { userId: user.id },
+          data: { creditsRemaining: 3 },
+        });
+      }
 
-      if (effectiveCredits <= 0) {
+      // ✅ Always use DB value
+      const creditsAvailable = state.creditsRemaining;
+
+      // Block if no credits left
+      if (creditsAvailable <= 0) {
         const resetAt = state.windowStartedAt
           ? new Date(state.windowStartedAt.getTime() + WINDOW_MS)
           : null;
@@ -100,13 +114,14 @@ export async function POST(req: Request) {
         };
       }
 
+      // First claim starts the window
       const isFirst = !state.windowStartedAt;
 
       const updated = await tx.botUserState.update({
         where: { userId: user.id },
         data: {
           windowStartedAt: isFirst ? now : state.windowStartedAt,
-          creditsRemaining: isFirst ? 2 : { decrement: 1 },
+          creditsRemaining: { decrement: 1 }, // ✅ always decrement from DB
         },
       });
 
@@ -150,7 +165,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       allowed: true,
-      username: user.username ?? username, // ✅ avoid string | null leak
+      username: user.username ?? username,
       botId,
       claimId: result.claimId,
       claimNumber: result.claimNumber,
@@ -160,7 +175,11 @@ export async function POST(req: Request) {
     });
   } catch (err: unknown) {
     const message =
-      err instanceof Error ? err.message : typeof err === "string" ? err : "Unknown error";
+      err instanceof Error
+        ? err.message
+        : typeof err === "string"
+        ? err
+        : "Unknown error";
 
     console.error("❌ /api/houses/claim error:", err);
 
