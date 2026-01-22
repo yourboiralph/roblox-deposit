@@ -52,6 +52,9 @@ model BotUserState {
   creditsRemaining Int       @default(3)
   windowStartedAt  DateTime?
 
+  priorityGhibli Int?
+  prioritySanrio Int?
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   bot  Bot  @relation(fields: [botId], references: [id], onDelete: Cascade)
 
