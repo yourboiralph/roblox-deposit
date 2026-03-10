@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-const WINDOW_MS = 3 * 60 * 60 * 1000; // 3 hours
+const WINDOW_MS = 12 * 60 * 60 * 1000; // 3 hours
 
 export async function POST(req: Request) {
   try {
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
         });
       }
 
-      // ✅ Reset if expired (3 hours after first claim)
+      // ✅ Reset if expired (12 hours after first claim)
       if (state.windowStartedAt) {
         const resetAt = new Date(state.windowStartedAt.getTime() + WINDOW_MS);
         if (now >= resetAt) {

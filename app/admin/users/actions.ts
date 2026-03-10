@@ -33,3 +33,28 @@ export async function addAllowedUserAction(
     return { success: false, error: "Failed to add user" };
   }
 }
+export type ResetUserActionState = {
+  success: boolean;
+  username?: string;
+  error?: string;
+} | null;
+
+export async function resetUserCreditsAction(
+  _prev: ResetUserActionState,
+  formData: FormData
+): Promise<ResetUserActionState> {
+  const username = String(formData.get("username") ?? "").trim();
+
+  if (!username) return { success: false, error: "Username is required" };
+
+  const user = await prisma.user.findFirst({ where: { username } });
+
+  if (!user) return { success: false, error: "User not found" };
+
+  await prisma.botUserState.updateMany({
+    where: { userId: user.id },
+    data: { creditsRemaining: 3, windowStartedAt: null },
+  });
+
+  return { success: true, username };
+}
