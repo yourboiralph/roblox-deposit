@@ -3,7 +3,15 @@ import UserForm from "./userForm";
 import UserList from "./userList";
 
 export default async function AllowedUsersAdminPage() {
-  const users = await prisma.user.findMany({ orderBy: { createdAt: "desc" } });
+  const users = await prisma.user.findMany({
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      username: true,
+      nickname: true,
+      createdAt: true,
+    },
+  });
 
   return (
     <div
@@ -79,7 +87,7 @@ export default async function AllowedUsersAdminPage() {
                 color: "#475569",
               }}
             >
-              Manage approved usernames and quickly reset credits when needed.
+              Manage approved usernames, nicknames, and quickly reset credits when needed.
             </p>
           </div>
 

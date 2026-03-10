@@ -1,14 +1,26 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { resetUserCreditsAction, type ResetUserActionState } from "./actions";
+import {
+  resetUserCreditsAction,
+  updateUserNicknameAction,
+  type ResetUserActionState,
+  type NicknameActionState,
+} from "./actions";
 
-type User = { id: string; username: string | null };
+type User = { id: string; username: string | null; nickname: string | null };
 
 export default function UserList({ users }: { users: User[] }) {
   const [selected, setSelected] = useState<string | null>(null);
+  const [editingNickname, setEditingNickname] = useState<string | null>(null);
+
   const [state, action, pending] = useActionState<ResetUserActionState, FormData>(
     resetUserCreditsAction,
+    null
+  );
+
+  const [nicknameState, nicknameAction, nicknamePending] = useActionState<NicknameActionState, FormData>(
+    updateUserNicknameAction,
     null
   );
 
@@ -81,6 +93,11 @@ export default function UserList({ users }: { users: User[] }) {
                   }}
                 >
                   {u.username ?? "(no username)"}
+                  {u.nickname ? (
+                    <span style={{ color: "#64748b", fontWeight: 600 }}>
+                      {" "}({u.nickname})
+                    </span>
+                  ) : null}
                 </div>
                 <div
                   style={{
@@ -89,7 +106,7 @@ export default function UserList({ users }: { users: User[] }) {
                     marginTop: 2,
                   }}
                 >
-                  Click to manage user credits
+                  Click to manage user credits and nickname
                 </div>
               </div>
             </div>
@@ -121,78 +138,231 @@ export default function UserList({ users }: { users: User[] }) {
               <div
                 style={{
                   marginTop: 14,
-                  padding: 16,
-                  borderRadius: 16,
-                  border: "1px solid #fee2e2",
-                  background: "linear-gradient(180deg, #fff 0%, #fff7f7 100%)",
+                  display: "grid",
+                  gap: 14,
                 }}
               >
                 <div
                   style={{
-                    fontSize: 13,
-                    color: "#7f1d1d",
-                    fontWeight: 700,
-                    marginBottom: 10,
+                    padding: 16,
+                    borderRadius: 16,
+                    border: "1px solid #dbeafe",
+                    background: "linear-gradient(180deg, #fff 0%, #f8fbff 100%)",
                   }}
                 >
-                  Reset this user
-                </div>
-
-                <form action={action}>
-                  <input type="hidden" name="username" value={u.username ?? ""} />
-                  <button
-                    disabled={pending}
+                  <div
                     style={{
-                      padding: "10px 16px",
-                      borderRadius: 12,
-                      border: "1px solid #f87171",
-                      background: pending
-                        ? "linear-gradient(135deg, #fca5a5, #f87171)"
-                        : "linear-gradient(135deg, #fff1f2, #fee2e2)",
-                      color: "#dc2626",
-                      cursor: pending ? "not-allowed" : "pointer",
-                      fontSize: 13,
-                      fontWeight: 800,
-                      boxShadow: "0 6px 18px rgba(239,68,68,0.10)",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 12,
+                      marginBottom: 12,
                     }}
                   >
-                    {pending ? "Resetting..." : "🔄 Reset credits & timer"}
-                  </button>
-                </form>
+                    <div>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          color: "#1d4ed8",
+                          fontWeight: 700,
+                        }}
+                      >
+                        Nickname
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: "#64748b",
+                          marginTop: 2,
+                        }}
+                      >
+                        Current: {u.nickname ? u.nickname : "No nickname yet"}
+                      </div>
+                    </div>
 
-                {state?.username === u.username && (
-                  <div style={{ marginTop: 10, fontSize: 13 }}>
-                    {state.success ? (
-                      <span
-                        style={{
-                          display: "inline-block",
-                          padding: "10px 12px",
-                          borderRadius: 12,
-                          background: "#ecfdf5",
-                          border: "1px solid #bbf7d0",
-                          color: "#166534",
-                          fontWeight: 700,
-                        }}
-                      >
-                        ✅ Credits reset to 3
-                      </span>
-                    ) : (
-                      <span
-                        style={{
-                          display: "inline-block",
-                          padding: "10px 12px",
-                          borderRadius: 12,
-                          background: "#fef2f2",
-                          border: "1px solid #fecaca",
-                          color: "#dc2626",
-                          fontWeight: 700,
-                        }}
-                      >
-                        ❌ {state.error}
-                      </span>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditingNickname(
+                          editingNickname === u.username ? null : u.username
+                        )
+                      }
+                      style={{
+                        padding: "8px 12px",
+                        borderRadius: 10,
+                        border: "1px solid #93c5fd",
+                        background: "#eff6ff",
+                        color: "#1d4ed8",
+                        cursor: "pointer",
+                        fontSize: 13,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {editingNickname === u.username
+                        ? "Close"
+                        : u.nickname
+                        ? "Edit nickname"
+                        : "Add nickname"}
+                    </button>
                   </div>
-                )}
+
+                  {editingNickname === u.username && (
+                    <form
+                      action={nicknameAction}
+                      style={{
+                        display: "grid",
+                        gap: 10,
+                      }}
+                    >
+                      <input type="hidden" name="username" value={u.username ?? ""} />
+
+                      <input
+                        name="nickname"
+                        defaultValue={u.nickname ?? ""}
+                        placeholder="Enter nickname"
+                        style={{
+                          padding: "12px 14px",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 12,
+                          fontSize: 14,
+                          outline: "none",
+                          background: "#ffffff",
+                          color: "#0f172a",
+                        }}
+                      />
+
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                        <button
+                          disabled={nicknamePending}
+                          style={{
+                            padding: "10px 14px",
+                            borderRadius: 12,
+                            border: "1px solid #2563eb",
+                            background: "linear-gradient(135deg, #3b82f6, #2563eb)",
+                            color: "#ffffff",
+                            cursor: nicknamePending ? "not-allowed" : "pointer",
+                            fontSize: 13,
+                            fontWeight: 800,
+                            boxShadow: "0 6px 18px rgba(37,99,235,0.18)",
+                          }}
+                        >
+                          {nicknamePending ? "Saving..." : "Save nickname"}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  {nicknameState?.username === u.username && (
+                    <div style={{ marginTop: 10, fontSize: 13 }}>
+                      {nicknameState.success ? (
+                        <span
+                          style={{
+                            display: "inline-block",
+                            padding: "10px 12px",
+                            borderRadius: 12,
+                            background: "#ecfdf5",
+                            border: "1px solid #bbf7d0",
+                            color: "#166534",
+                            fontWeight: 700,
+                          }}
+                        >
+                          ✅ Nickname updated
+                          {nicknameState.nickname ? `: ${nicknameState.nickname}` : " (cleared)"}
+                        </span>
+                      ) : (
+                        <span
+                          style={{
+                            display: "inline-block",
+                            padding: "10px 12px",
+                            borderRadius: 12,
+                            background: "#fef2f2",
+                            border: "1px solid #fecaca",
+                            color: "#dc2626",
+                            fontWeight: 700,
+                          }}
+                        >
+                          ❌ {nicknameState.error}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    padding: 16,
+                    borderRadius: 16,
+                    border: "1px solid #fee2e2",
+                    background: "linear-gradient(180deg, #fff 0%, #fff7f7 100%)",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 13,
+                      color: "#7f1d1d",
+                      fontWeight: 700,
+                      marginBottom: 10,
+                    }}
+                  >
+                    Reset this user
+                  </div>
+
+                  <form action={action}>
+                    <input type="hidden" name="username" value={u.username ?? ""} />
+                    <button
+                      disabled={pending}
+                      style={{
+                        padding: "10px 16px",
+                        borderRadius: 12,
+                        border: "1px solid #f87171",
+                        background: pending
+                          ? "linear-gradient(135deg, #fca5a5, #f87171)"
+                          : "linear-gradient(135deg, #fff1f2, #fee2e2)",
+                        color: "#dc2626",
+                        cursor: pending ? "not-allowed" : "pointer",
+                        fontSize: 13,
+                        fontWeight: 800,
+                        boxShadow: "0 6px 18px rgba(239,68,68,0.10)",
+                      }}
+                    >
+                      {pending ? "Resetting..." : "🔄 Reset credits & timer"}
+                    </button>
+                  </form>
+
+                  {state?.username === u.username && (
+                    <div style={{ marginTop: 10, fontSize: 13 }}>
+                      {state.success ? (
+                        <span
+                          style={{
+                            display: "inline-block",
+                            padding: "10px 12px",
+                            borderRadius: 12,
+                            background: "#ecfdf5",
+                            border: "1px solid #bbf7d0",
+                            color: "#166534",
+                            fontWeight: 700,
+                          }}
+                        >
+                          ✅ Credits reset to 3
+                        </span>
+                      ) : (
+                        <span
+                          style={{
+                            display: "inline-block",
+                            padding: "10px 12px",
+                            borderRadius: 12,
+                            background: "#fef2f2",
+                            border: "1px solid #fecaca",
+                            color: "#dc2626",
+                            fontWeight: 700,
+                          }}
+                        >
+                          ❌ {state.error}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

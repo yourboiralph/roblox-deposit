@@ -78,7 +78,6 @@ export default function UserForm() {
             fontSize: 14,
             cursor: pending ? "not-allowed" : "pointer",
             boxShadow: "0 10px 24px rgba(79,70,229,0.28)",
-            transition: "all 0.2s ease",
           }}
         >
           {pending ? "Adding..." : "Add Allowed User"}
