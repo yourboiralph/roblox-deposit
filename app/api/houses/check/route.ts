@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-const WINDOW_MS = 3 * 60 * 60 * 1000;
+const WINDOW_MS = 12 * 60 * 60 * 1000;
 
 type Priority = { ghibli: number; sanrio: number } | null;
 
