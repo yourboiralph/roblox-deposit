@@ -39,7 +39,7 @@ export async function addAllowedUserAction(
       },
     });
 
-    revalidatePath("/admin/allowed-users");
+    revalidatePath("/admin/users");
 
     return {
       success: true,
@@ -115,7 +115,7 @@ export async function updateUserNicknameAction(
       data: { nickname },
     });
 
-    revalidatePath("/admin/allowed-users");
+    revalidatePath("/admin/users");
 
     return {
       success: true,
